@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     [$data, $errors] = validate_room($_POST);
 
     if (!$errors) {
-        $sql  = 'INSERT INTO rooms (room_number, price, status, water_type) VALUES (?, ?, ?, ?)';
+        $sql  = 'INSERT INTO project_rooms (room_number, price, status, water_type) VALUES (?, ?, ?, ?)';
         $stmt = $conn->prepare($sql);
         $price = (float) $data['price'];
         $stmt->bind_param('sdss', $data['room_number'], $price, $data['status'], $data['water_type']);
@@ -26,7 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('success', 'เพิ่มห้อง ' . $data['room_number'] . ' แล้ว');
             redirect('room_view.php?id=' . $conn->insert_id);
         } catch (mysqli_sql_exception $e) {
-            // 1062 = Duplicate entry: เลขห้องซ้ำ (ตาราง rooms ตั้ง UNIQUE ไว้ที่ room_number)
+            // 1062 = Duplicate entry: เลขห้องซ้ำ (ตาราง project_rooms ตั้ง UNIQUE ไว้ที่ room_number)
             if ($e->getCode() === 1062) {
                 $errors['room_number'] = 'มีห้อง ' . $data['room_number'] . ' อยู่แล้ว ใช้เลขห้องอื่น';
             } else {

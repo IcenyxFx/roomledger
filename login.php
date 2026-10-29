@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // 3) ค้นหาผู้ใช้ด้วย Prepared Statement (ป้องกัน SQL Injection)
         //    ใช้เครื่องหมาย ? แทนค่า แล้วค่อยผูกค่าจริงด้วย bind_param
-        $sql  = 'SELECT id, email, password_hash FROM users WHERE email = ? LIMIT 1';
+        $sql  = 'SELECT id, email, password_hash FROM project_users WHERE email = ? LIMIT 1';
         $stmt = $conn->prepare($sql);
         $stmt->bind_param('s', $email);   // 's' = string (ชนิดข้อมูลของ ? ตัวที่ 1)
         $stmt->execute();

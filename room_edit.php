@@ -13,7 +13,7 @@ if (!$id) {
 }
 
 // ---------- ดึงข้อมูลเดิม ----------
-$stmt = $conn->prepare('SELECT id, room_number, price, status, water_type FROM rooms WHERE id = ? LIMIT 1');
+$stmt = $conn->prepare('SELECT id, room_number, price, status, water_type FROM project_rooms WHERE id = ? LIMIT 1');
 $stmt->bind_param('i', $id);
 $stmt->execute();
 $room = $stmt->get_result()->fetch_assoc();
@@ -24,7 +24,7 @@ if (!$room) {
 }
 
 // ห้องนี้มีผู้เช่าอยู่ไหม (ถ้ามี จะล็อกสถานะไว้ที่ "มีผู้เช่า")
-$stmt = $conn->prepare('SELECT COUNT(*) FROM tenants WHERE room_id = ? AND move_out_date IS NULL');
+$stmt = $conn->prepare('SELECT COUNT(*) FROM project_tenants WHERE room_id = ? AND move_out_date IS NULL');
 $stmt->bind_param('i', $id);
 $stmt->execute();
 $hasTenant = $stmt->get_result()->fetch_row()[0] > 0;
@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     [$data, $errors] = validate_room($_POST, $hasTenant);
 
     if (!$errors) {
-        $sql  = 'UPDATE rooms SET room_number = ?, price = ?, status = ?, water_type = ? WHERE id = ? LIMIT 1';
+        $sql  = 'UPDATE project_rooms SET room_number = ?, price = ?, status = ?, water_type = ? WHERE id = ? LIMIT 1';
         $stmt = $conn->prepare($sql);
         $price = (float) $data['price'];
         $stmt->bind_param('sdssi', $data['room_number'], $price, $data['status'], $data['water_type'], $id);

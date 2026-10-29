@@ -12,7 +12,7 @@ if (!$id) {
     redirect('rooms.php');
 }
 
-$stmt = $conn->prepare('SELECT id, room_number, price, status FROM rooms WHERE id = ? LIMIT 1');
+$stmt = $conn->prepare('SELECT id, room_number, price, status FROM project_rooms WHERE id = ? LIMIT 1');
 $stmt->bind_param('i', $id);
 $stmt->execute();
 $room = $stmt->get_result()->fetch_assoc();
@@ -25,8 +25,8 @@ if (!$room) {
 // ---------- ตรวจว่ามีข้อมูลที่ผูกกับห้องนี้หรือไม่ ----------
 // ห้องที่เคยมีผู้เช่าหรือบิล ห้ามลบ เพราะจะทำให้ประวัติหาย (ฐานข้อมูลตั้ง ON DELETE RESTRICT ไว้ด้วย)
 $stmt = $conn->prepare('SELECT
-                          (SELECT COUNT(*) FROM tenants WHERE room_id = ?) AS tenant_count,
-                          (SELECT COUNT(*) FROM bills   WHERE room_id = ?) AS bill_count');
+                          (SELECT COUNT(*) FROM project_tenants WHERE room_id = ?) AS tenant_count,
+                          (SELECT COUNT(*) FROM project_bills   WHERE room_id = ?) AS bill_count');
 $stmt->bind_param('ii', $id, $id);
 $stmt->execute();
 $usage = $stmt->get_result()->fetch_assoc();
@@ -41,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('room_view.php?id=' . $id);
     }
 
-    $stmt = $conn->prepare('DELETE FROM rooms WHERE id = ? LIMIT 1');   // มี WHERE เสมอ ห้ามลืม
+    $stmt = $conn->prepare('DELETE FROM project_rooms WHERE id = ? LIMIT 1');   // มี WHERE เสมอ ห้ามลืม
     $stmt->bind_param('i', $id);
     try {
         $stmt->execute();

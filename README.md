@@ -43,7 +43,8 @@
 ```
 config/db.php            การเชื่อมต่อฐานข้อมูล (ไม่ push ขึ้น GitHub)
 config/db.example.php    ไฟล์ตัวอย่างสำหรับคัดลอก
-database/setup.sql       สร้างตาราง users, rooms, tenants, bills + ข้อมูลตัวอย่าง
+database/setup.sql        สร้างตาราง project_users, project_rooms, project_tenants, project_bills (XAMPP)
+database/setup_server.sql เวอร์ชันสำหรับเซิร์ฟเวอร์ Angsila (ฐานข้อมูล s68160390)
 includes/                auth, ฟังก์ชันช่วย, ส่วนหัว/ท้ายหน้า, ฟอร์มห้อง
 assets/css/app.css       ธีมหน้าตาของระบบ
 login.php / logout.php   ระบบยืนยันตัวตน
@@ -59,8 +60,8 @@ preview/                 ต้นแบบหน้าจอด้วยข้�
 
 ```mermaid
 erDiagram
-    users ||--o{ bills : "creates"
-    rooms ||--o{ tenants : "houses"
-    rooms ||--o{ bills : "billed for"
-    tenants ||--o{ bills : "receives"
+    project_users ||--o{ project_bills : "creates"
+    project_rooms ||--o{ project_tenants : "houses"
+    project_rooms ||--o{ project_bills : "billed for"
+    project_tenants ||--o{ project_bills : "receives"
 ```

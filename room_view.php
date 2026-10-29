@@ -13,7 +13,7 @@ if (!$id) {
 }
 
 // ---------- ข้อมูลห้อง ----------
-$stmt = $conn->prepare('SELECT id, room_number, price, status, water_type FROM rooms WHERE id = ? LIMIT 1');
+$stmt = $conn->prepare('SELECT id, room_number, price, status, water_type FROM project_rooms WHERE id = ? LIMIT 1');
 $stmt->bind_param('i', $id);
 $stmt->execute();
 $room = $stmt->get_result()->fetch_assoc();
@@ -24,7 +24,7 @@ if (!$room) {
 }
 
 // ---------- ผู้เช่าปัจจุบัน (ยังไม่ย้ายออก) ----------
-$stmt = $conn->prepare('SELECT full_name, phone, move_in_date FROM tenants
+$stmt = $conn->prepare('SELECT full_name, phone, move_in_date FROM project_tenants
                         WHERE room_id = ? AND move_out_date IS NULL
                         ORDER BY move_in_date DESC LIMIT 1');
 $stmt->bind_param('i', $id);
@@ -34,7 +34,7 @@ $stmt->close();
 
 // ---------- ประวัติบิล 12 เดือนล่าสุด ----------
 $stmt = $conn->prepare('SELECT billing_month, water_prev, water_curr, elec_prev, elec_curr, total_amount, status
-                        FROM bills WHERE room_id = ?
+                        FROM project_bills WHERE room_id = ?
                         ORDER BY billing_month DESC LIMIT 12');
 $stmt->bind_param('i', $id);
 $stmt->execute();

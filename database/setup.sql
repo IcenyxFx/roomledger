@@ -1,7 +1,9 @@
 -- ============================================================
 -- ไฟล์: database/setup.sql
 -- ระบบจัดการหอพักและคำนวณบิลค่าเช่าออนไลน์
--- สร้างฐานข้อมูล 4 ตารางตาม ER Diagram ใน Proposal: users, rooms, tenants, bills
+-- สร้างฐานข้อมูล 4 ตารางตาม ER Diagram ใน Proposal
+-- ทุกตารางขึ้นต้นด้วย project_ เพื่อไม่ชนกับตารางของ Lab อื่นในฐานข้อมูลเดียวกัน
+-- project_users, project_rooms, project_tenants, project_bills
 -- วิธีใช้: phpMyAdmin > แท็บ SQL > วางทั้งไฟล์ > Go
 -- คำเตือน: รันซ้ำแล้วข้อมูลเดิมทั้งหมดจะถูกลบและสร้างใหม่
 -- ============================================================
@@ -12,27 +14,27 @@ CREATE DATABASE IF NOT EXISTS dorm_db
 USE dorm_db;
 
 -- ลบตารางลูกก่อนตารางแม่ (ตารางที่มี Foreign Key ต้องลบก่อน)
-DROP TABLE IF EXISTS bills;
-DROP TABLE IF EXISTS tenants;
-DROP TABLE IF EXISTS rooms;
-DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS project_bills;
+DROP TABLE IF EXISTS project_tenants;
+DROP TABLE IF EXISTS project_rooms;
+DROP TABLE IF EXISTS project_users;
 
 -- ------------------------------------------------------------
--- users : ผู้ดูแลระบบที่ล็อกอินได้
+-- project_users : ผู้ดูแลระบบที่ล็อกอินได้
 -- ------------------------------------------------------------
-CREATE TABLE users (
+CREATE TABLE project_users (
     id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
     email         VARCHAR(255) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    UNIQUE KEY uq_users_email (email)
+    UNIQUE KEY uq_project_users_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- rooms : ห้องพัก (ชั้นของห้อง = หลักร้อยของเลขห้อง เช่น 204 อยู่ชั้น 2)
+-- project_rooms : ห้องพัก (ชั้นของห้อง = หลักร้อยของเลขห้อง เช่น 204 อยู่ชั้น 2)
 -- ------------------------------------------------------------
-CREATE TABLE rooms (
+CREATE TABLE project_rooms (
     id          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
     room_number VARCHAR(10)   NOT NULL,
     price       DECIMAL(10,2) NOT NULL DEFAULT 0.00,                 -- ค่าเช่าต่อเดือน
@@ -40,13 +42,13 @@ CREATE TABLE rooms (
                 NOT NULL DEFAULT 'available',                         -- ว่าง / มีผู้เช่า / ซ่อมบำรุง
     water_type  ENUM('meter','flat_rate') NOT NULL DEFAULT 'meter',   -- ค่าน้ำตามมิเตอร์ / เหมาจ่าย
     PRIMARY KEY (id),
-    UNIQUE KEY uq_rooms_room_number (room_number)
+    UNIQUE KEY uq_project_rooms_room_number (room_number)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- tenants : ผู้เช่า (move_out_date เป็น NULL = ยังพักอยู่)
+-- project_tenants : ผู้เช่า (move_out_date เป็น NULL = ยังพักอยู่)
 -- ------------------------------------------------------------
-CREATE TABLE tenants (
+CREATE TABLE project_tenants (
     id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
     room_id       INT UNSIGNED NOT NULL,
     full_name     VARCHAR(100) NOT NULL,
@@ -55,19 +57,19 @@ CREATE TABLE tenants (
     move_out_date DATE         NULL DEFAULT NULL,
     created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    KEY idx_tenants_room (room_id),
+    KEY idx_project_tenants_room (room_id),
     -- RESTRICT: ลบห้องไม่ได้ถ้ายังมีประวัติผู้เช่า ป้องกันข้อมูลกำพร้า
-    CONSTRAINT fk_tenants_room FOREIGN KEY (room_id) REFERENCES rooms (id)
+    CONSTRAINT fk_project_tenants_room FOREIGN KEY (room_id) REFERENCES project_rooms (id)
         ON UPDATE CASCADE ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- bills : บิลประจำเดือน (1 ห้อง 1 บิลต่อเดือน)
+-- project_bills : บิลประจำเดือน (1 ห้อง 1 บิลต่อเดือน)
 -- billing_month เก็บเป็นวันที่ 1 ของเดือน เช่น 2026-10-01 = บิลเดือน ต.ค. 2569
 -- เก็บอัตราต่อหน่วยไว้ในบิลแต่ละใบ เมื่อปรับราคาภายหลัง บิลเก่าจะไม่เปลี่ยน
 -- ห้องเหมาจ่าย: water_prev / water_curr เป็น NULL และ water_rate = ยอดเหมาจ่ายต่อเดือน
 -- ------------------------------------------------------------
-CREATE TABLE bills (
+CREATE TABLE project_bills (
     id            INT UNSIGNED  NOT NULL AUTO_INCREMENT,
     room_id       INT UNSIGNED  NOT NULL,
     tenant_id     INT UNSIGNED  NOT NULL,
@@ -84,28 +86,28 @@ CREATE TABLE bills (
     status        ENUM('unpaid','paid') NOT NULL DEFAULT 'unpaid',
     created_at    TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    UNIQUE KEY uq_bills_room_month (room_id, billing_month),   -- ห้ามออกบิลซ้ำเดือนเดียวกัน
-    KEY idx_bills_tenant (tenant_id),
-    KEY idx_bills_creator (created_by),
-    CONSTRAINT fk_bills_room    FOREIGN KEY (room_id)    REFERENCES rooms (id)   ON UPDATE CASCADE ON DELETE RESTRICT,
-    CONSTRAINT fk_bills_tenant  FOREIGN KEY (tenant_id)  REFERENCES tenants (id) ON UPDATE CASCADE ON DELETE RESTRICT,
-    CONSTRAINT fk_bills_creator FOREIGN KEY (created_by) REFERENCES users (id)   ON UPDATE CASCADE ON DELETE RESTRICT,
-    CONSTRAINT chk_elec  CHECK (elec_curr >= elec_prev),
-    CONSTRAINT chk_water CHECK (water_curr IS NULL OR water_curr >= water_prev)
+    UNIQUE KEY uq_project_bills_room_month (room_id, billing_month),   -- ห้ามออกบิลซ้ำเดือนเดียวกัน
+    KEY idx_project_bills_tenant (tenant_id),
+    KEY idx_project_bills_creator (created_by),
+    CONSTRAINT fk_project_bills_room    FOREIGN KEY (room_id)    REFERENCES project_rooms (id)   ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_project_bills_tenant  FOREIGN KEY (tenant_id)  REFERENCES project_tenants (id) ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_project_bills_creator FOREIGN KEY (created_by) REFERENCES project_users (id)   ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT chk_project_bills_elec  CHECK (elec_curr >= elec_prev),
+    CONSTRAINT chk_project_bills_water CHECK (water_curr IS NULL OR water_curr >= water_prev)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
 -- บัญชีแอดมินตั้งต้น: admin@dorm.com / password123
 -- (Hash จาก password_hash('password123', PASSWORD_DEFAULT) ทดสอบกับ password_verify() แล้ว)
 -- ------------------------------------------------------------
-INSERT INTO users (email, password_hash) VALUES
+INSERT INTO project_users (email, password_hash) VALUES
 ('admin@dorm.com', '$2y$10$EeBL8yiaWhkTDG6PweMz5uLO1o6mnIb7xejIvkUD7wk9vUqXi9gSe');
 
 -- ------------------------------------------------------------
 -- ข้อมูลตัวอย่างสำหรับทดสอบ: 18 ห้อง 3 ชั้น, ผู้เช่า 12 คน, บิลเดือน ก.ย. 2569
 -- (ชื่อและเบอร์โทรสมมติทั้งหมด) อัตรา: ไฟ 8 บาท/หน่วย, น้ำ 18 บาท/หน่วย, เหมาจ่าย 150 บาท
 -- ------------------------------------------------------------
-INSERT INTO rooms (room_number, price, status, water_type) VALUES
+INSERT INTO project_rooms (room_number, price, status, water_type) VALUES
 ('101', 3500.00, 'occupied', 'meter'),
 ('102', 3500.00, 'available', 'meter'),
 ('103', 3500.00, 'occupied', 'meter'),
@@ -125,7 +127,7 @@ INSERT INTO rooms (room_number, price, status, water_type) VALUES
 ('305', 4000.00, 'maintenance', 'meter'),
 ('306', 4000.00, 'occupied', 'flat_rate');
 
-INSERT INTO tenants (room_id, full_name, phone, move_in_date, move_out_date) VALUES
+INSERT INTO project_tenants (room_id, full_name, phone, move_in_date, move_out_date) VALUES
 (1, 'ศุภกร รัตนพันธ์', '080-455-2219', '2024-09-01', NULL),
 (3, 'พิมพ์ชนก สายทอง', '061-876-3354', '2025-12-01', NULL),
 (5, 'กิตติพัฒน์ นาคสวัสดิ์', '098-120-4478', '2026-02-01', NULL),
@@ -139,7 +141,7 @@ INSERT INTO tenants (room_id, full_name, phone, move_in_date, move_out_date) VAL
 (16, 'ปิยะธิดา แก้วมณี', '062-554-8812', '2026-01-10', NULL),
 (18, 'ณัฐวุฒิ บุญมา', '095-003-4417', '2025-08-01', NULL);
 
-INSERT INTO bills (room_id, tenant_id, created_by, billing_month, rent_amount,
+INSERT INTO project_bills (room_id, tenant_id, created_by, billing_month, rent_amount,
                    water_prev, water_curr, water_rate, elec_prev, elec_curr, elec_rate, total_amount, status) VALUES
 (1, 1, 1, '2026-09-01', 3500.00, 1677, 1688, 18.00, 7977, 8105, 8.00, 4722.00, 'paid'),
 (3, 2, 1, '2026-09-01', 3500.00, 499, 512, 18.00, 2633, 2730, 8.00, 4510.00, 'unpaid'),

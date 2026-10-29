@@ -19,10 +19,10 @@ if ($filter !== 'all' && !array_key_exists($filter, VIEW_STATUS_LABEL)) {
 // ยอดค้าง = ผลรวมบิลที่ status = 'unpaid' ของห้องนั้น
 $sql = "SELECT r.id, r.room_number, r.price, r.status, r.water_type,
                t.full_name,
-               COALESCE((SELECT SUM(b.total_amount) FROM bills b
+               COALESCE((SELECT SUM(b.total_amount) FROM project_bills b
                          WHERE b.room_id = r.id AND b.status = 'unpaid'), 0) AS unpaid
-        FROM rooms r
-        LEFT JOIN tenants t ON t.room_id = r.id AND t.move_out_date IS NULL
+        FROM project_rooms r
+        LEFT JOIN project_tenants t ON t.room_id = r.id AND t.move_out_date IS NULL
         WHERE (? = '' OR r.room_number LIKE ? OR t.full_name LIKE ?)
         ORDER BY r.room_number";
 $like = '%' . $q . '%';
