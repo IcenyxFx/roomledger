@@ -7,9 +7,9 @@
 // เริ่มต้น Session (ต้องเรียกก่อนมี output ใด ๆ ส่งออกไปที่เบราว์เซอร์)
 session_start();
 
-// ถ้าล็อกอินอยู่แล้ว ไม่ต้องเห็นหน้า login ซ้ำ ส่งไปหน้าภาพรวมเลย
+// ถ้าล็อกอินอยู่แล้ว ไม่ต้องเห็นหน้า login ซ้ำ ส่งไปหน้าแรกตามบทบาท
 if (isset($_SESSION['user_id'])) {
-    header('Location: dashboard.php');
+    header('Location: ' . (($_SESSION['role'] ?? '') === 'tenant' ? 'my_bills.php' : 'dashboard.php'));
     exit;
 }
 
@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         // 3) ค้นหาผู้ใช้ด้วย Prepared Statement (ป้องกัน SQL Injection)
         //    ใช้เครื่องหมาย ? แทนค่า แล้วค่อยผูกค่าจริงด้วย bind_param
-        $sql  = 'SELECT id, email, password_hash FROM project_users WHERE email = ? LIMIT 1';
+        $sql  = 'SELECT id, email, password_hash, role FROM project_users WHERE email = ? LIMIT 1';
         $stmt = $conn->prepare($sql);
         $stmt->bind_param('s', $email);   // 's' = string (ชนิดข้อมูลของ ? ตัวที่ 1)
         $stmt->execute();
@@ -55,9 +55,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // เก็บข้อมูลผู้ใช้ลง Session
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['email']   = $user['email'];
+            $_SESSION['role']    = $user['role'];   // owner = เจ้าของหอ, tenant = ผู้เช่า
 
-            // ล็อกอินสำเร็จ ไปหน้าภาพรวม
-            header('Location: dashboard.php');
+            // ล็อกอินสำเร็จ: เจ้าของหอไปหน้าภาพรวม ผู้เช่าไปหน้าบิลของตัวเอง
+            // (สิทธิ์จริงตรวจซ้ำจากฐานข้อมูลทุกหน้าใน includes/auth.php)
+            header('Location: ' . ($user['role'] === 'tenant' ? 'my_bills.php' : 'dashboard.php'));
             exit;
         }
 

@@ -10,12 +10,24 @@
 $pageTitle = $pageTitle ?? 'ระบบจัดการหอพัก';
 $activeNav = $activeNav ?? '';
 
-// เมนูหลัก (url = null = หน้าที่ยังไม่เปิดใช้ จะแสดงเป็นเมนูจาง ๆ กดไม่ได้)
-$navItems = [
-    'dashboard'   => ['label' => 'ภาพรวม',          'short' => 'ภาพรวม',  'url' => 'dashboard.php',        'icon' => '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>'],
-    'rooms'       => ['label' => 'ห้องพัก',          'short' => 'ห้องพัก', 'url' => 'rooms.php', 'icon' => '<path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18M15 12h.01"/>'],
-    'tenants'     => ['label' => 'ผู้เช่า',           'short' => 'ผู้เช่า',  'url' => 'tenants.php',        'icon' => '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>'],
-    'bills'       => ['label' => 'จดมิเตอร์และบิล',   'short' => 'บิล',     'url' => 'bills.php',        'icon' => '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>'],
+// เมนูหลักแยกตามบทบาท: เจ้าของหอเห็นทุกเมนู ผู้เช่าเห็นเฉพาะบิลของตัวเอง
+// (url = null = หน้าที่ยังไม่เปิดใช้ จะแสดงเป็นเมนูจาง ๆ กดไม่ได้)
+$icon = [
+    'dashboard' => '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>',
+    'rooms'     => '<path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18M15 12h.01"/>',
+    'tenants'   => '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
+    'bills'     => '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
+    'rates'     => '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+];
+$isOwner = ($currentUser['role'] ?? 'owner') === 'owner';
+$navItems = $isOwner ? [
+    'dashboard' => ['label' => 'ภาพรวม',          'short' => 'ภาพรวม',  'url' => 'dashboard.php', 'icon' => $icon['dashboard']],
+    'rooms'     => ['label' => 'ห้องพัก',          'short' => 'ห้องพัก', 'url' => 'rooms.php',     'icon' => $icon['rooms']],
+    'tenants'   => ['label' => 'ผู้เช่า',           'short' => 'ผู้เช่า',  'url' => 'tenants.php',   'icon' => $icon['tenants']],
+    'bills'     => ['label' => 'จดมิเตอร์และบิล',   'short' => 'บิล',     'url' => 'bills.php',     'icon' => $icon['bills']],
+    'rates'     => ['label' => 'อัตราค่าบริการ',    'short' => 'อัตรา',   'url' => 'rates.php',     'icon' => $icon['rates']],
+] : [
+    'my_bills'  => ['label' => 'บิลของฉัน',        'short' => 'บิลของฉัน', 'url' => 'my_bills.php', 'icon' => $icon['bills']],
 ];
 
 /** วาดลิงก์เมนู 1 อัน ใช้ทั้ง Sidebar และ Bottom Navigation */
@@ -57,7 +69,8 @@ $flash = take_flash();
             <?= nav_item($key, $item, $activeNav, 'nav-link') ?>
         <?php endforeach; ?>
         <div class="sidebar-foot">
-            <span class="muted"><?= e($_SESSION['email'] ?? '') ?></span>
+            <span><?= $isOwner ? 'เจ้าของหอ' : 'ผู้เช่า' ?></span>
+            <span class="muted"><?= e($currentUser['email'] ?? '') ?></span>
             <a class="btn btn-sm" href="logout.php">ออกจากระบบ</a>
         </div>
     </aside>

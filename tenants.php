@@ -20,11 +20,12 @@ $counts = ['current' => (int) $c['current_count'], 'past' => (int) $c['all_count
 
 // ---------- รายชื่อผู้เช่า + ห้อง + ยอดค้างชำระของแต่ละคน ----------
 $sql = "SELECT t.id, t.full_name, t.phone, t.move_in_date, t.move_out_date,
-               r.id AS room_id, r.room_number,
+               r.id AS room_id, r.room_number, u.email AS account_email,
                COALESCE((SELECT SUM(b.total_amount) FROM project_bills b
                          WHERE b.tenant_id = t.id AND b.status = 'unpaid'), 0) AS unpaid
         FROM project_tenants t
         JOIN project_rooms r ON r.id = t.room_id
+        LEFT JOIN project_users u ON u.tenant_id = t.id
         WHERE ((? = 'current' AND t.move_out_date IS NULL)
             OR (? = 'past' AND t.move_out_date IS NOT NULL)
             OR ? = 'all')
@@ -90,7 +91,7 @@ require __DIR__ . '/includes/header.php';
             <tbody>
                 <?php foreach ($tenants as $t): ?>
                     <tr>
-                        <td><?= e($t['full_name']) ?></td>
+                        <td><?= e($t['full_name']) ?><?= $t['account_email'] ? ' <span class="pill pill-paid" title="' . e($t['account_email']) . '">มีบัญชี</span>' : '' ?></td>
                         <td class="num"><a href="room_view.php?id=<?= (int) $t['room_id'] ?>"><?= e($t['room_number']) ?></a></td>
                         <td class="num"><?= e($t['phone']) ?></td>
                         <td><?= thai_date($t['move_in_date']) ?></td>
