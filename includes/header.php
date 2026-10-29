@@ -18,6 +18,7 @@ $icon = [
     'tenants'   => '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
     'bills'     => '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>',
     'rates'     => '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+    'account'   => '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
 ];
 $isOwner = ($currentUser['role'] ?? 'owner') === 'owner';
 $navItems = $isOwner ? [
@@ -26,8 +27,10 @@ $navItems = $isOwner ? [
     'tenants'   => ['label' => 'ผู้เช่า',           'short' => 'ผู้เช่า',  'url' => 'tenants.php',   'icon' => $icon['tenants']],
     'bills'     => ['label' => 'จดมิเตอร์และบิล',   'short' => 'บิล',     'url' => 'bills.php',     'icon' => $icon['bills']],
     'rates'     => ['label' => 'อัตราค่าบริการ',    'short' => 'อัตรา',   'url' => 'rates.php',     'icon' => $icon['rates']],
+    'account'   => ['label' => 'บัญชีของฉัน',      'short' => 'บัญชี',   'url' => 'account.php',   'icon' => $icon['account']],
 ] : [
     'my_bills'  => ['label' => 'บิลของฉัน',        'short' => 'บิลของฉัน', 'url' => 'my_bills.php', 'icon' => $icon['bills']],
+    'account'   => ['label' => 'บัญชีของฉัน',      'short' => 'บัญชี',     'url' => 'account.php',  'icon' => $icon['account']],
 ];
 
 /** วาดลิงก์เมนู 1 อัน ใช้ทั้ง Sidebar และ Bottom Navigation */

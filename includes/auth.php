@@ -6,6 +6,7 @@
  * 1) Authentication: ยังไม่ล็อกอิน -> กลับหน้า login
  * 2) Authorization:  ทุกหน้าเป็นของ "เจ้าของหอ" (owner) เป็นค่าเริ่มต้น
  *    หน้าที่ให้ผู้เช่าใช้ ต้องประกาศก่อน require:  const PAGE_ROLE = 'tenant';
+ *    หน้าที่ใช้ได้ทุกบทบาท (เช่น เปลี่ยนรหัสผ่าน):   const PAGE_ROLE = 'any';
  *    ผู้เช่าเปิดหน้าของเจ้าของหอ -> เจอหน้า 403 "ไม่มีสิทธิ์"
  * หลังไฟล์นี้ใช้ได้: $conn (ฐานข้อมูล) และ $currentUser (id, email, role, tenant_id)
  */
@@ -36,7 +37,7 @@ if (!$currentUser) {             // บัญชีถูกลบไปแล�
 
 // ---------- 2) Authorization ----------
 $pageRole = defined('PAGE_ROLE') ? PAGE_ROLE : 'owner';
-if ($currentUser['role'] !== $pageRole) {
+if ($pageRole !== 'any' && $currentUser['role'] !== $pageRole) {
     if ($currentUser['role'] === 'owner') {
         redirect('dashboard.php');          // เจ้าของหอไม่มีหน้าผู้เช่า ส่งกลับหน้าภาพรวม
     }
