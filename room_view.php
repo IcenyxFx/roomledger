@@ -24,7 +24,7 @@ if (!$room) {
 }
 
 // ---------- ผู้เช่าปัจจุบัน (ยังไม่ย้ายออก) ----------
-$stmt = $conn->prepare('SELECT full_name, phone, move_in_date FROM project_tenants
+$stmt = $conn->prepare('SELECT id, full_name, phone, move_in_date FROM project_tenants
                         WHERE room_id = ? AND move_out_date IS NULL
                         ORDER BY move_in_date DESC LIMIT 1');
 $stmt->bind_param('i', $id);
@@ -33,7 +33,7 @@ $tenant = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
 // ---------- ประวัติบิล 12 เดือนล่าสุด ----------
-$stmt = $conn->prepare('SELECT billing_month, water_prev, water_curr, elec_prev, elec_curr, total_amount, status
+$stmt = $conn->prepare('SELECT id, billing_month, water_prev, water_curr, elec_prev, elec_curr, total_amount, status
                         FROM project_bills WHERE room_id = ?
                         ORDER BY billing_month DESC LIMIT 12');
 $stmt->bind_param('i', $id);
@@ -41,11 +41,16 @@ $stmt->execute();
 $bills = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
 
-$unpaid = 0.0;
+// ค้างชำระ = บิลที่ยังไม่จ่ายของเดือนก่อน ๆ (บิลเดือนนี้ยังอยู่ในช่วงรอชำระ)
+$thisMonth = current_month();
+$overdue = 0.0;
+$hasBillThisMonth = false;
 foreach ($bills as $bill) {
-    if ($bill['status'] === 'unpaid') $unpaid += (float) $bill['total_amount'];
+    $billMonth = substr($bill['billing_month'], 0, 10);
+    if ($bill['status'] === 'unpaid' && $billMonth < $thisMonth) $overdue += (float) $bill['total_amount'];
+    if ($billMonth === $thisMonth) $hasBillThisMonth = true;
 }
-$viewStatus = room_view_status($room['status'], $unpaid);
+$viewStatus = room_view_status($room['status'], $overdue);
 
 $pageTitle = 'ห้อง ' . $room['room_number'];
 $activeNav = 'rooms';
@@ -84,14 +89,24 @@ require __DIR__ . '/includes/header.php';
                 <dt>โทร</dt><dd><?= e($tenant['phone']) ?></dd>
                 <dt>เข้าพักตั้งแต่</dt><dd><?= thai_date($tenant['move_in_date']) ?></dd>
             </dl>
+            <div class="actions">
+                <?php if (!$hasBillThisMonth): ?>
+                    <a class="btn btn-sm btn-primary" href="bill_create.php?room_id=<?= (int) $room['id'] ?>&month=<?= substr($thisMonth, 0, 7) ?>">จดมิเตอร์ <?= thai_date($thisMonth, true) ?></a>
+                <?php endif; ?>
+                <a class="btn btn-sm" href="tenant_edit.php?id=<?= (int) $tenant['id'] ?>">แก้ข้อมูลผู้เช่า</a>
+                <a class="btn btn-sm" href="tenant_moveout.php?id=<?= (int) $tenant['id'] ?>">บันทึกย้ายออก</a>
+            </div>
         <?php else: ?>
             <p class="muted"><?= $room['status'] === 'maintenance' ? 'ยังไม่มีผู้เช่า ห้องนี้อยู่ระหว่างซ่อม' : 'ห้องนี้ว่าง ยังไม่มีผู้เช่า' ?></p>
+            <?php if ($room['status'] === 'available'): ?>
+                <div class="actions"><a class="btn btn-sm btn-primary" href="tenant_create.php?room_id=<?= (int) $room['id'] ?>">เพิ่มผู้เช่าเข้าห้องนี้</a></div>
+            <?php endif; ?>
         <?php endif; ?>
     </section>
 </div>
 
-<?php if ($unpaid > 0): ?>
-    <div class="flash flash-error">ห้องนี้ค้างชำระ <?= baht($unpaid) ?></div>
+<?php if ($overdue > 0): ?>
+    <div class="flash flash-error">ห้องนี้ค้างชำระ <?= baht($overdue) ?> จากบิลเดือนก่อน</div>
 <?php endif; ?>
 
 <section class="stack">
@@ -99,7 +114,7 @@ require __DIR__ . '/includes/header.php';
     <?php if ($bills): ?>
         <div class="table-wrap">
             <table>
-                <thead><tr><th>เดือน</th><th class="right">ไฟ (หน่วย)</th><th class="right">น้ำ</th><th class="right">ยอดรวม</th><th>สถานะ</th></tr></thead>
+                <thead><tr><th>เดือน</th><th class="right">ไฟ (หน่วย)</th><th class="right">น้ำ</th><th class="right">ยอดรวม</th><th>สถานะ</th><th></th></tr></thead>
                 <tbody>
                     <?php foreach ($bills as $bill): ?>
                         <tr>
@@ -107,7 +122,12 @@ require __DIR__ . '/includes/header.php';
                             <td class="right num"><?= number_format($bill['elec_curr'] - $bill['elec_prev']) ?></td>
                             <td class="right num"><?= $bill['water_curr'] === null ? 'เหมาจ่าย' : number_format($bill['water_curr'] - $bill['water_prev']) . ' หน่วย' ?></td>
                             <td class="right num"><?= baht($bill['total_amount']) ?></td>
-                            <td><?= $bill['status'] === 'paid' ? '<span class="pill pill-paid">ชำระแล้ว</span>' : '<span class="pill pill-overdue">ค้างชำระ</span>' ?></td>
+                            <td>
+                                <?php if ($bill['status'] === 'paid'): ?><span class="pill pill-free">ชำระแล้ว</span>
+                                <?php elseif (substr($bill['billing_month'], 0, 10) < $thisMonth): ?><span class="pill pill-overdue">ค้างชำระ</span>
+                                <?php else: ?><span class="pill pill-rented">รอชำระ</span><?php endif; ?>
+                            </td>
+                            <td class="right"><a class="btn btn-sm" href="bill_view.php?id=<?= (int) $bill['id'] ?>">ดูบิล</a></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>

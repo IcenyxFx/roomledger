@@ -16,18 +16,19 @@ if ($filter !== 'all' && !array_key_exists($filter, VIEW_STATUS_LABEL)) {
 
 // ---------- 2) ดึงข้อมูลห้อง + ผู้เช่าปัจจุบัน + ยอดค้างชำระ ด้วย Prepared Statement ----------
 // LEFT JOIN: ห้องว่างไม่มีผู้เช่า ก็ยังต้องแสดง
-// ยอดค้าง = ผลรวมบิลที่ status = 'unpaid' ของห้องนั้น
+// ยอดค้าง = ผลรวมบิลที่ยังไม่ชำระของ "เดือนก่อน ๆ" (บิลเดือนนี้ยังอยู่ในช่วงรอชำระ ไม่นับเป็นค้าง)
 $sql = "SELECT r.id, r.room_number, r.price, r.status, r.water_type,
                t.full_name,
                COALESCE((SELECT SUM(b.total_amount) FROM project_bills b
-                         WHERE b.room_id = r.id AND b.status = 'unpaid'), 0) AS unpaid
+                         WHERE b.room_id = r.id AND b.status = 'unpaid' AND b.billing_month < ?), 0) AS unpaid
         FROM project_rooms r
         LEFT JOIN project_tenants t ON t.room_id = r.id AND t.move_out_date IS NULL
         WHERE (? = '' OR r.room_number LIKE ? OR t.full_name LIKE ?)
         ORDER BY r.room_number";
 $like = '%' . $q . '%';
 $stmt = $conn->prepare($sql);
-$stmt->bind_param('sss', $q, $like, $like);
+$thisMonth = current_month();
+$stmt->bind_param('ssss', $thisMonth, $q, $like, $like);
 $stmt->execute();
 $allRooms = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
 $stmt->close();
@@ -112,28 +113,7 @@ require __DIR__ . '/includes/header.php';
 
 <?php elseif ($view === 'grid'): ?>
     <!-- มุมมองผังอาคาร -->
-    <section class="building" aria-label="ผังห้องตามชั้น">
-        <?php foreach ($floors as $floor => $floorRooms): ?>
-            <div class="floor">
-                <span class="floor-label"><?= $floor > 0 ? 'ชั้น ' . $floor : 'อื่น ๆ' ?></span>
-                <?php foreach ($floorRooms as $room):
-                    $st = $room['view_status'];
-                    $meta = match ($st) {
-                        'free'    => 'ว่าง พร้อมเข้าอยู่',
-                        'rented'  => $room['full_name'] ?? 'มีผู้เช่า',
-                        'overdue' => 'ค้าง ' . baht($room['unpaid']),
-                        'repair'  => 'ซ่อมบำรุง',
-                    };
-                ?>
-                    <a class="room room--<?= $st ?>" href="room_view.php?id=<?= (int) $room['id'] ?>" aria-label="ห้อง <?= e($room['room_number']) ?> <?= VIEW_STATUS_LABEL[$st] ?>">
-                        <span class="room-no"><?= e($room['room_number']) ?></span>
-                        <span class="room-meta"><?= e($meta) ?></span>
-                    </a>
-                <?php endforeach; ?>
-            </div>
-        <?php endforeach; ?>
-        <div class="ground" aria-hidden="true"></div>
-    </section>
+    <?php require __DIR__ . '/includes/building.php'; ?>
 
 <?php else: ?>
     <!-- มุมมองรายการ (ตาราง) -->

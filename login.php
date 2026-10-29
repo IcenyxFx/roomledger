@@ -7,9 +7,9 @@
 // เริ่มต้น Session (ต้องเรียกก่อนมี output ใด ๆ ส่งออกไปที่เบราว์เซอร์)
 session_start();
 
-// ถ้าล็อกอินอยู่แล้ว ไม่ต้องเห็นหน้า login ซ้ำ ส่งไปหน้าห้องพักเลย
+// ถ้าล็อกอินอยู่แล้ว ไม่ต้องเห็นหน้า login ซ้ำ ส่งไปหน้าภาพรวมเลย
 if (isset($_SESSION['user_id'])) {
-    header('Location: rooms.php');
+    header('Location: dashboard.php');
     exit;
 }
 
@@ -56,8 +56,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['email']   = $user['email'];
 
-            // ล็อกอินสำเร็จ ไปหน้าห้องพัก
-            header('Location: rooms.php');
+            // ล็อกอินสำเร็จ ไปหน้าภาพรวม
+            header('Location: dashboard.php');
             exit;
         }
 

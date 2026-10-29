@@ -10,13 +10,12 @@
 $pageTitle = $pageTitle ?? 'ระบบจัดการหอพัก';
 $activeNav = $activeNav ?? '';
 
-// เมนูหลัก: url = null คือหน้าที่ยังไม่ได้ทำ (จะแสดงเป็นเมนูจาง ๆ กดไม่ได้)
+// เมนูหลัก (url = null = หน้าที่ยังไม่เปิดใช้ จะแสดงเป็นเมนูจาง ๆ กดไม่ได้)
 $navItems = [
-    'dashboard'   => ['label' => 'ภาพรวม',          'short' => 'ภาพรวม',  'url' => null,        'icon' => '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>'],
+    'dashboard'   => ['label' => 'ภาพรวม',          'short' => 'ภาพรวม',  'url' => 'dashboard.php',        'icon' => '<rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>'],
     'rooms'       => ['label' => 'ห้องพัก',          'short' => 'ห้องพัก', 'url' => 'rooms.php', 'icon' => '<path d="M5 21V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v17"/><path d="M3 21h18M15 12h.01"/>'],
-    'tenants'     => ['label' => 'ผู้เช่า',           'short' => 'ผู้เช่า',  'url' => null,        'icon' => '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>'],
-    'bills'       => ['label' => 'จดมิเตอร์และบิล',   'short' => 'บิล',     'url' => null,        'icon' => '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>'],
-    'maintenance' => ['label' => 'แจ้งซ่อม',          'short' => 'แจ้งซ่อม', 'url' => null,        'icon' => '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/>'],
+    'tenants'     => ['label' => 'ผู้เช่า',           'short' => 'ผู้เช่า',  'url' => 'tenants.php',        'icon' => '<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>'],
+    'bills'       => ['label' => 'จดมิเตอร์และบิล',   'short' => 'บิล',     'url' => 'bills.php',        'icon' => '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>'],
 ];
 
 /** วาดลิงก์เมนู 1 อัน ใช้ทั้ง Sidebar และ Bottom Navigation */

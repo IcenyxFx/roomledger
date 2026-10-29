@@ -10,19 +10,7 @@
  *   $cancelUrl   ปุ่มยกเลิกกลับไปหน้าไหน
  */
 
-/** แสดงข้อความ error ใต้ช่องกรอก (ถ้ามี) */
-function field_error(array $errors, string $name): string
-{
-    return isset($errors[$name])
-        ? '<span class="error" id="' . $name . '-error">' . e($errors[$name]) . '</span>'
-        : '';
-}
-
-/** attribute สำหรับช่องที่มี error ให้โปรแกรมอ่านหน้าจออ่าน error ได้ */
-function invalid_attr(array $errors, string $name): string
-{
-    return isset($errors[$name]) ? ' aria-invalid="true" aria-describedby="' . $name . '-error"' : '';
-}
+// field_error() และ invalid_attr() อยู่ใน includes/functions.php
 ?>
 <?php if ($errors): ?>
     <div class="flash flash-error" role="alert">บันทึกไม่ได้ แก้ไขช่องที่มีข้อความสีแดงก่อน</div>

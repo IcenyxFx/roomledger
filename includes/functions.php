@@ -154,3 +154,140 @@ function validate_room(array $input, bool $hasTenant = false): array
 
     return [$data, $errors];
 }
+
+// ---------------- ช่วยแสดง error ในฟอร์ม (ใช้ทุกฟอร์ม) ----------------
+
+/** แสดงข้อความ error ใต้ช่องกรอก (ถ้ามี) */
+function field_error(array $errors, string $name): string
+{
+    return isset($errors[$name])
+        ? '<span class="error" id="' . $name . '-error">' . e($errors[$name]) . '</span>'
+        : '';
+}
+
+/** attribute สำหรับช่องที่มี error ให้โปรแกรมอ่านหน้าจออ่าน error ได้ */
+function invalid_attr(array $errors, string $name): string
+{
+    return isset($errors[$name]) ? ' aria-invalid="true" aria-describedby="' . $name . '-error"' : '';
+}
+
+// ---------------- เดือนของบิล ----------------
+// เก็บเดือนในฐานข้อมูลเป็นวันที่ 1 ของเดือน เช่น 2026-10-01 = บิลเดือน ต.ค. 2569
+
+/** เดือนปัจจุบันตามเวลาประเทศไทย เช่น "2026-10-01" */
+function current_month(): string
+{
+    return date('Y-m-01');
+}
+
+/** แปลง "2026-10" จาก URL เป็น "2026-10-01" ถ้ารูปแบบผิดคืน null */
+function parse_month(?string $value): ?string
+{
+    if (!is_string($value) || !preg_match('/^(\d{4})-(\d{2})$/', $value, $m)) return null;
+    if (!checkdate((int) $m[2], 1, (int) $m[1]) || (int) $m[1] < 2000) return null;
+    return $value . '-01';
+}
+
+/** เลื่อนเดือน เช่น shift_month("2026-10-01", -1) = "2026-09-01" */
+function shift_month(string $month, int $by): string
+{
+    return date('Y-m-01', strtotime($month . ' ' . ($by >= 0 ? '+' : '') . $by . ' month'));
+}
+
+// ---------------- ตรวจข้อมูลผู้เช่า ----------------
+
+/** ตรวจวันที่รูปแบบ YYYY-MM-DD ว่ามีอยู่จริง */
+function valid_date(string $value): bool
+{
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $value, $m)) return false;
+    return checkdate((int) $m[2], (int) $m[3], (int) $m[1]);
+}
+
+/**
+ * ตรวจฟอร์มผู้เช่า คืนค่า [ข้อมูลที่ผ่านการตรวจ, รายการ error]
+ * $roomIds = รายการ id ห้องที่อนุญาตให้เลือก (null = ไม่ต้องเลือกห้อง เช่น ตอนแก้ไข)
+ */
+function validate_tenant(array $input, ?array $roomIds = null): array
+{
+    $digits = preg_replace('/[\s-]/', '', (string) ($input['phone'] ?? ''));
+    $data = [
+        'room_id'      => (int) ($input['room_id'] ?? 0),
+        'full_name'    => trim(preg_replace('/\s+/u', ' ', (string) ($input['full_name'] ?? ''))),
+        'phone'        => $digits,
+        'move_in_date' => trim((string) ($input['move_in_date'] ?? '')),
+    ];
+    $errors = [];
+
+    if ($roomIds !== null && !in_array($data['room_id'], $roomIds, true)) {
+        $errors['room_id'] = 'เลือกห้องที่ว่างอยู่';
+    }
+
+    if ($data['full_name'] === '') {
+        $errors['full_name'] = 'กรอกชื่อ-นามสกุล';
+    } elseif (!preg_match('/^.{2,100}$/u', $data['full_name'])) {
+        $errors['full_name'] = 'ชื่อต้องยาว 2-100 ตัวอักษร';
+    }
+
+    if ($digits === '') {
+        $errors['phone'] = 'กรอกเบอร์โทร';
+    } elseif (!preg_match('/^0\d{8,9}$/', $digits)) {
+        $errors['phone'] = 'เบอร์โทรต้องขึ้นต้นด้วย 0 และมี 9-10 หลัก เช่น 081-234-5678';
+    } else {
+        // เก็บแบบมีขีดให้อ่านง่าย: 0812345678 -> 081-234-5678
+        $data['phone'] = strlen($digits) === 10
+            ? substr($digits, 0, 3) . '-' . substr($digits, 3, 3) . '-' . substr($digits, 6)
+            : substr($digits, 0, 2) . '-' . substr($digits, 2, 3) . '-' . substr($digits, 5);
+    }
+
+    if (!valid_date($data['move_in_date'])) {
+        $errors['move_in_date'] = 'เลือกวันที่เข้าพัก';
+    } elseif ($data['move_in_date'] > date('Y-m-d', strtotime('+60 days'))) {
+        $errors['move_in_date'] = 'วันเข้าพักล่วงหน้าได้ไม่เกิน 60 วัน';
+    } elseif ($data['move_in_date'] < '2000-01-01') {
+        $errors['move_in_date'] = 'วันที่ไม่ถูกต้อง';
+    }
+
+    return [$data, $errors];
+}
+
+// ---------------- มิเตอร์และการคำนวณบิล ----------------
+
+/**
+ * ตรวจเลขมิเตอร์ 1 ช่อง คืนค่า [ตัวเลข หรือ null, ข้อความ error หรือ null]
+ * $min = เลขต่ำสุดที่ยอมรับ (เลขเดือนก่อน)
+ * $checkJump = เตือนถ้าใช้ไปเกิน 5,000 หน่วย (ปิดไว้ตอนตรวจเลขเดือนก่อน เพราะไม่มีอะไรให้เทียบ)
+ */
+function read_meter($raw, int $min, string $label, bool $checkJump = true): array
+{
+    $raw = trim(str_replace(',', '', (string) $raw));
+    if ($raw === '')                 return [null, 'กรอกเลขมิเตอร์' . $label];
+    if (!preg_match('/^\d{1,7}$/', $raw)) return [null, 'กรอกเป็นตัวเลขจำนวนเต็มเท่านั้น'];
+    $value = (int) $raw;
+    if ($value < $min)               return [null, 'ต้องไม่น้อยกว่าเลขเดือนก่อน (' . number_format($min) . ')'];
+    if ($checkJump && $value - $min > 5000) return [null, 'ใช้ไป ' . number_format($value - $min) . ' หน่วย มากผิดปกติ ตรวจเลขอีกครั้ง'];
+    return [$value, null];
+}
+
+/**
+ * คำนวณยอดบิล คืนค่าแยกเป็นส่วน ๆ เพื่อแสดงในใบแจ้งหนี้
+ * ห้องเหมาจ่าย: $waterPrev / $waterCurr = null และ $waterRate = ยอดเหมาจ่ายต่อเดือน
+ */
+function bill_breakdown(float $rent, int $elecPrev, int $elecCurr, float $elecRate,
+                        ?int $waterPrev, ?int $waterCurr, float $waterRate): array
+{
+    $elecUnits  = $elecCurr - $elecPrev;
+    $isFlat     = $waterCurr === null;
+    $waterUnits = $isFlat ? null : $waterCurr - $waterPrev;
+    $elecCost   = $elecUnits * $elecRate;
+    $waterCost  = $isFlat ? $waterRate : $waterUnits * $waterRate;
+
+    return [
+        'rent'        => $rent,
+        'elec_units'  => $elecUnits,
+        'elec_cost'   => $elecCost,
+        'water_flat'  => $isFlat,
+        'water_units' => $waterUnits,
+        'water_cost'  => $waterCost,
+        'total'       => round($rent + $elecCost + $waterCost, 2),
+    ];
+}
