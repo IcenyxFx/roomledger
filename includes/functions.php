@@ -291,3 +291,30 @@ function bill_breakdown(float $rent, int $elecPrev, int $elecCurr, float $elecRa
         'total'       => round($rent + $elecCost + $waterCost, 2),
     ];
 }
+
+// ---------------- อัตราค่าบริการ ----------------
+
+/**
+ * อัตราปัจจุบันจากตาราง project_settings
+ * คืนค่า: elec_rate, water_rate, water_flat_rate (float), updated_at, updated_by_email
+ */
+function current_rates($conn): array
+{
+    $stmt = $conn->prepare('SELECT s.elec_rate, s.water_rate, s.water_flat_rate, s.updated_at, u.email AS updated_by_email
+                            FROM project_settings s LEFT JOIN project_users u ON u.id = s.updated_by
+                            WHERE s.id = 1 LIMIT 1');
+    $stmt->execute();
+    $row = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    if (!$row) {
+        return DEFAULT_RATES + ['updated_at' => null, 'updated_by_email' => null, 'missing' => true];
+    }
+    foreach (['elec_rate', 'water_rate', 'water_flat_rate'] as $k) $row[$k] = (float) $row[$k];
+    return $row + ['missing' => false];
+}
+
+/** แสดงอัตราแบบสั้น เช่น 8 หรือ 7.50 */
+function rate_text(float $rate): string
+{
+    return floor($rate) == $rate ? number_format($rate) : number_format($rate, 2);
+}

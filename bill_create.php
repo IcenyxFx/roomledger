@@ -52,8 +52,9 @@ $stmt->close();
 
 $isFlat    = $room['water_type'] === 'flat_rate';
 $rent      = (float) $room['price'];
-$elecRate  = RATE_ELEC;
-$waterRate = $isFlat ? RATE_WATER_FLAT : RATE_WATER;
+$rates     = current_rates($conn);      // อัตราปัจจุบันจากหน้า "อัตราค่าบริการ" จะถูกบันทึกลงบิลใบนี้
+$elecRate  = $rates['elec_rate'];
+$waterRate = $isFlat ? $rates['water_flat_rate'] : $rates['water_rate'];
 $askPrev   = [
     'elec'  => $last === null,
     'water' => !$isFlat && ($last === null || $last['water_curr'] === null),

@@ -1,9 +1,9 @@
 -- ============================================================
 -- ไฟล์: database/setup_server.sql  (เวอร์ชันสำหรับเซิร์ฟเวอร์ Angsila)
 -- ระบบจัดการหอพักและคำนวณบิลค่าเช่าออนไลน์
--- สร้างฐานข้อมูล 4 ตารางตาม ER Diagram ใน Proposal
+-- สร้างฐานข้อมูล 5 ตารางตาม ER Diagram ใน Proposal
 -- ทุกตารางขึ้นต้นด้วย project_ เพื่อไม่ชนกับตารางของ Lab อื่นในฐานข้อมูลเดียวกัน
--- project_users, project_rooms, project_tenants, project_bills
+-- project_users, project_rooms, project_tenants, project_bills, project_settings
 -- วิธีใช้: phpMyAdmin ของ Angsila > เลือกฐานข้อมูล s68160390 > แท็บ SQL > วางทั้งไฟล์ > Go
 -- (บนเครื่องตัวเองที่ใช้ XAMPP ให้ใช้ setup.sql แทน)
 -- คำเตือน: รันซ้ำแล้วข้อมูลเดิมทั้งหมดจะถูกลบและสร้างใหม่
@@ -14,20 +14,26 @@ USE s68160390;
 
 -- ลบตารางลูกก่อนตารางแม่ (ตารางที่มี Foreign Key ต้องลบก่อน)
 DROP TABLE IF EXISTS project_bills;
+DROP TABLE IF EXISTS project_settings;
+DROP TABLE IF EXISTS project_users;      -- users มี FK ไปที่ tenants จึงต้องลบก่อน tenants
 DROP TABLE IF EXISTS project_tenants;
 DROP TABLE IF EXISTS project_rooms;
-DROP TABLE IF EXISTS project_users;
 
 -- ------------------------------------------------------------
--- project_users : ผู้ดูแลระบบที่ล็อกอินได้
+-- project_users : บัญชีที่ล็อกอินได้ มี 2 บทบาท
+--   owner  = เจ้าของหอ/ผู้ดูแล จัดการได้ทุกอย่าง
+--   tenant = ผู้เช่า ดูได้เฉพาะห้องและบิลของตัวเอง (ผูกกับ project_tenants ผ่าน tenant_id)
 -- ------------------------------------------------------------
 CREATE TABLE project_users (
     id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
     email         VARCHAR(255) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
+    role          ENUM('owner','tenant') NOT NULL DEFAULT 'owner',
+    tenant_id     INT UNSIGNED NULL DEFAULT NULL,    -- มีค่าเฉพาะบัญชีผู้เช่า
     created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    UNIQUE KEY uq_project_users_email (email)
+    UNIQUE KEY uq_project_users_email (email),
+    UNIQUE KEY uq_project_users_tenant (tenant_id)   -- ผู้เช่า 1 คน มีบัญชีได้ 1 บัญชี
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
@@ -96,11 +102,33 @@ CREATE TABLE project_bills (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
+-- project_settings : อัตราค่าบริการปัจจุบัน (มีแถวเดียว id = 1) แก้ได้จากหน้า "อัตราค่าบริการ"
+-- ตอนออกบิล ระบบคัดลอกอัตราจากตารางนี้ไปเก็บในบิล เปลี่ยนอัตราภายหลัง บิลเก่าจึงไม่เปลี่ยน
+-- ------------------------------------------------------------
+CREATE TABLE project_settings (
+    id              TINYINT UNSIGNED NOT NULL,
+    elec_rate       DECIMAL(10,2) NOT NULL,     -- ค่าไฟ บาท/หน่วย
+    water_rate      DECIMAL(10,2) NOT NULL,     -- ค่าน้ำตามมิเตอร์ บาท/หน่วย
+    water_flat_rate DECIMAL(10,2) NOT NULL,     -- ค่าน้ำเหมาจ่าย บาท/เดือน
+    updated_by      INT UNSIGNED  NULL,
+    updated_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_project_settings_user FOREIGN KEY (updated_by) REFERENCES project_users (id)
+        ON UPDATE CASCADE ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- FK จาก users ไป tenants ต้องเพิ่มหลังสร้าง project_tenants แล้ว
+-- CASCADE: ลบผู้เช่า (ได้เฉพาะคนที่ไม่มีบิล) บัญชีของผู้เช่าคนนั้นถูกลบตามไปด้วย
+ALTER TABLE project_users
+    ADD CONSTRAINT fk_project_users_tenant FOREIGN KEY (tenant_id) REFERENCES project_tenants (id)
+        ON UPDATE CASCADE ON DELETE CASCADE;
+
+-- ------------------------------------------------------------
 -- บัญชีแอดมินตั้งต้น: admin@dorm.com / password123
 -- (Hash จาก password_hash('password123', PASSWORD_DEFAULT) ทดสอบกับ password_verify() แล้ว)
 -- ------------------------------------------------------------
-INSERT INTO project_users (email, password_hash) VALUES
-('admin@dorm.com', '$2y$10$EeBL8yiaWhkTDG6PweMz5uLO1o6mnIb7xejIvkUD7wk9vUqXi9gSe');
+INSERT INTO project_users (email, password_hash, role) VALUES
+('admin@dorm.com', '$2y$10$EeBL8yiaWhkTDG6PweMz5uLO1o6mnIb7xejIvkUD7wk9vUqXi9gSe', 'owner');
 
 -- ------------------------------------------------------------
 -- ข้อมูลตัวอย่างสำหรับทดสอบ: 18 ห้อง 3 ชั้น, ผู้เช่า 12 คน, บิลเดือน ก.ย. 2569
@@ -155,3 +183,18 @@ INSERT INTO project_bills (room_id, tenant_id, created_by, billing_month, rent_a
 (16, 11, 1, '2026-09-01', 4000.00, 644, 655, 18.00, 2912, 3021, 8.00, 5070.00, 'paid'),
 (18, 12, 1, '2026-09-01', 4000.00, NULL, NULL, 150.00, 5997, 6120, 8.00, 5134.00, 'paid');
 
+-- ------------------------------------------------------------
+-- อัตราค่าบริการเริ่มต้น
+-- ------------------------------------------------------------
+INSERT INTO project_settings (id, elec_rate, water_rate, water_flat_rate, updated_by) VALUES
+(1, 8.00, 18.00, 150.00, 1);
+
+-- ------------------------------------------------------------
+-- บัญชีผู้เช่าตัวอย่าง 2 บัญชี (รหัสผ่าน password123 เหมือนแอดมิน)
+--   room101@dorm.com = ผู้เช่าห้อง 101 (ชำระครบ)
+--   room204@dorm.com = ผู้เช่าห้อง 204 (มีบิลค้างชำระ)
+-- ------------------------------------------------------------
+INSERT INTO project_users (email, password_hash, role, tenant_id)
+SELECT CONCAT('room', r.room_number, '@dorm.com'), '$2y$10$EeBL8yiaWhkTDG6PweMz5uLO1o6mnIb7xejIvkUD7wk9vUqXi9gSe', 'tenant', t.id
+FROM project_tenants t JOIN project_rooms r ON r.id = t.room_id
+WHERE r.room_number IN ('101', '204') AND t.move_out_date IS NULL;

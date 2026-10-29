@@ -37,6 +37,7 @@ $firstTodo = null;
 foreach ($rows as $row) { if ($row['bill_id'] === null) { $firstTodo = $row; break; } }
 
 $ym = fn (string $m) => substr($m, 0, 7);
+$rates = current_rates($conn);
 
 $pageTitle = 'บิล ' . thai_date($month, true);
 $activeNav = 'bills';
@@ -46,7 +47,7 @@ require __DIR__ . '/includes/header.php';
 <header class="page-head">
     <div>
         <h1>บิลเดือน <?= thai_date($month, true) ?></h1>
-        <p>อัตรา: ไฟ <?= RATE_ELEC ?> บาท/หน่วย · น้ำ <?= RATE_WATER ?> บาท/หน่วย · น้ำเหมาจ่าย <?= baht(RATE_WATER_FLAT) ?>/เดือน</p>
+        <p>อัตราปัจจุบัน: ไฟ <?= rate_text($rates['elec_rate']) ?> บาท/หน่วย · น้ำ <?= rate_text($rates['water_rate']) ?> บาท/หน่วย · น้ำเหมาจ่าย <?= baht($rates['water_flat_rate']) ?>/เดือน · <a href="rates.php">เปลี่ยนอัตรา</a></p>
     </div>
     <nav class="segmented" aria-label="เลือกเดือน">
         <a class="btn-seg" href="bills.php?month=<?= $ym(shift_month($month, -1)) ?>">‹ <?= thai_date(shift_month($month, -1), true) ?></a>
