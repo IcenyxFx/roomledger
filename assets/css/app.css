@@ -428,3 +428,8 @@ a.debt-item { color: var(--ink); text-decoration: none; }
   body { background: #fff; color: #000; }
   .panel, .table-wrap { border: 0; }
 }
+
+/* ---------- 16) ข้อความช่วยเหลือ และลิงก์ในเนื้อหา ---------- */
+.hint { font-size: var(--fs-xs); color: var(--ink-2); margin: 0; }
+main a:not([class]) { color: var(--rented); text-underline-offset: 2px; }
+main a:not([class]):hover { color: var(--ink); }
